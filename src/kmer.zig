@@ -3,13 +3,12 @@
 // no tests yet
 // limited to kmer <= 31
 // $ zig build-exe kmer.zig
-// $ ./kmer in.fasta
+// $ ./kmer in.fasta 4  // 4 for a 4-mer
 
 const std = @import("std");
 
 const global_allocator = std.heap.c_allocator;
 const stdout = std.io.getStdOut().writer();
-const kmer = 31;
 
 const Code = struct {
     data: u128,
@@ -163,6 +162,8 @@ fn printMap(self: usize, map: Map) !void {
 }
 
 pub fn main() !void {
+    const args = try std.process.argsAlloc(global_allocator);
+    const kmer = try std.fmt.parseInt(u8, args[2], 0);
     const input = try readInput();
     var map: Map = .{};
     try genMap(input, kmer, &map);
