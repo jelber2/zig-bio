@@ -3,7 +3,7 @@
 // no tests yet
 // limited to kmer <= 31
 // $ zig build-exe kmer.zig
-// does not work on a FASTA files
+// does not work on all FASTA files
 // $ ./kmer in.fasta 4  // 4 for a 4-mer
 
 const std = @import("std");
