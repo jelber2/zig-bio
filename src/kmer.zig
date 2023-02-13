@@ -1,5 +1,5 @@
 // modeled after https://github.com/hanabi1224/Programming-Language-Benchmarks/blob/c7c13cf65bc8c7422d241c3a46bfc16cf7884fc4/bench/algorithm/knucleotide/1.zig
-// will compile with zig version 0.11.0-dev.1585+94c68c1f9, most likely others
+// will compile with zig version 0.11.0-dev.1615+f62e3b8c0, most likely others
 // no tests yet
 // limited to kmer <= 31
 // $ zig build-exe kmer.zig
