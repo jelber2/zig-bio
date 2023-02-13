@@ -3,6 +3,7 @@
 // no tests yet
 // limited to kmer <= 31
 // $ zig build-exe kmer.zig
+// does not work on a FASTA files
 // $ ./kmer in.fasta 4  // 4 for a 4-mer
 
 const std = @import("std");
@@ -11,17 +12,17 @@ const global_allocator = std.heap.c_allocator;
 const stdout = std.io.getStdOut().writer();
 
 const Code = struct {
-    data: u128,
+    data: u64,
 
     pub inline fn encodeByte(c: u8) u8 {
         return (c >> 1) & 0b11;
     }
 
-    pub inline fn makeMask(frame: usize) u128 {
-        return (@as(u128, 1) << @intCast(u6, (2 * frame))) - 1;
+    pub inline fn makeMask(frame: usize) u64 {
+        return (@as(u64, 1) << @intCast(u6, (2 * frame))) - 1;
     }
 
-    pub inline fn push(self: *Code, c: u8, mask: u128) void {
+    pub inline fn push(self: *Code, c: u8, mask: u64) void {
         self.data = ((self.data << 2) | c) & mask;
     }
 
@@ -63,7 +64,7 @@ pub fn readInput() ![]const u8 {
     const reader = buffered_reader.reader();
     { // skip past first lines starting with '>'
         var i: u8 = 0;
-        while (i < 3) : (i += 1) {
+        while (i < 1) : (i += 1) {
             while (true) {
                 const c = try reader.readByte();
                 if (c == '>') break;
@@ -92,12 +93,12 @@ pub fn readInput() ![]const u8 {
     return buf;
 }
 
-const Map = std.AutoHashMapUnmanaged(Code, u128);
+const Map = std.AutoHashMapUnmanaged(Code, u32);
 const Iter = struct {
     i: usize = 0,
     input: []const u8,
     code: Code,
-    mask: u128,
+    mask: u64,
 
     pub fn init(input: []const u8, frame: usize) Iter {
         const mask = Code.makeMask(frame);
@@ -129,7 +130,7 @@ fn genMap(seq: []const u8, n: usize, map: *Map) !void {
 }
 
 const CountCode = struct {
-    count: u128,
+    count: u64,
     code: Code,
     pub fn asc(_: void, a: CountCode, b: CountCode) bool {
         const order = std.math.order(a.count, b.count);
@@ -141,7 +142,7 @@ fn printMap(self: usize, map: Map) !void {
     var v = std.ArrayList(CountCode).init(global_allocator);
     defer v.deinit();
     var iter = map.iterator();
-    var total: u128 = 0;
+    var total: u64 = 0;
     while (iter.next()) |it| {
         const count = it.value_ptr.*;
         total += count;
