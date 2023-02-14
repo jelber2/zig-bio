@@ -1,9 +1,10 @@
 // modeled after https://github.com/hanabi1224/Programming-Language-Benchmarks/blob/c7c13cf65bc8c7422d241c3a46bfc16cf7884fc4/bench/algorithm/knucleotide/1.zig
 // will compile with zig version 0.11.0-dev.1615+f62e3b8c0, most likely others
 // no tests yet
-// limited to kmer <= 31
+// limited to kmer <= 64
 // $ zig build-exe kmer.zig
 // does not work on all FASTA files
+// will result in error if k > sequence length
 // $ ./kmer in.fasta 4  // 4 for a 4-mer
 
 const std = @import("std");
@@ -26,15 +27,6 @@ const Code = struct {
         self.data = ((self.data << 2) | c) & mask;
     }
 
-    pub fn fromStr(s: []const u8) Code {
-        const mask = Code.makeMask(s.len);
-        var res = Code{ .data = 0 };
-        for (s) |c| {
-            res.push(Code.encodeByte(c), mask);
-        }
-        return res;
-    }
-
     pub fn toString(self: Code, frame: usize) ![]const u8 {
         var result = std.ArrayList(u8).init(global_allocator);
         var code = self.data;
@@ -45,6 +37,40 @@ const Code = struct {
                 Code.encodeByte('T') => 'T',
                 Code.encodeByte('G') => 'G',
                 Code.encodeByte('C') => 'C',
+                else => unreachable,
+            };
+            try result.append(c);
+            code >>= 2;
+        }
+        std.mem.reverse(u8, result.items);
+        return result.toOwnedSlice();
+    }
+};
+
+const Code2 = struct {
+    data: u128,
+
+    pub inline fn encodeByte(c: u8) u8 {
+        return (c >> 1) & 0b11;
+    }
+    pub inline fn makeMask2(frame: usize) u128 {
+        return (@as(u128, 1) << @intCast(u7, (2 * frame))) - 1;
+    }
+
+    pub inline fn push2(self: *Code2, c: u8, mask: u128) void {
+        self.data = ((self.data << 2) | c) & mask;
+    }
+
+    pub fn toString(self: Code2, frame: usize) ![]const u8 {
+        var result = std.ArrayList(u8).init(global_allocator);
+        var code = self.data;
+        var i: usize = 0;
+        while (i < frame) : (i += 1) {
+            const c: u8 = switch (@truncate(u8, code) & 0b11) {
+                Code2.encodeByte('A') => 'A',
+                Code2.encodeByte('T') => 'T',
+                Code2.encodeByte('G') => 'G',
+                Code2.encodeByte('C') => 'C',
                 else => unreachable,
             };
             try result.append(c);
@@ -94,6 +120,8 @@ pub fn readInput() ![]const u8 {
 }
 
 const Map = std.AutoHashMapUnmanaged(Code, u32);
+const Map2 = std.AutoHashMapUnmanaged(Code2, u32);
+
 const Iter = struct {
     i: usize = 0,
     input: []const u8,
@@ -119,6 +147,31 @@ const Iter = struct {
     }
 };
 
+const Iter2 = struct {
+    i: usize = 0,
+    input: []const u8,
+    code: Code2,
+    mask: u128,
+
+    pub fn init(input: []const u8, frame: usize) Iter2 {
+        const mask = Code2.makeMask2(frame);
+        var code = Code2{ .data = 0 };
+        for (input[0 .. frame - 1]) |c| code.push2(c, mask);
+        return .{
+            .input = input[frame - 1 ..],
+            .code = code,
+            .mask = mask,
+        };
+    }
+    pub fn next(self: *Iter2) ?Code2 {
+        if (self.i >= self.input.len) return null;
+        defer self.i += 1;
+        const c = self.input[self.i];
+        Code2.push2(&self.code, c, self.mask);
+        return self.code;
+    }
+};
+
 fn genMap(seq: []const u8, n: usize, map: *Map) !void {
     map.clearRetainingCapacity();
     var iter = Iter.init(seq, n);
@@ -129,6 +182,17 @@ fn genMap(seq: []const u8, n: usize, map: *Map) !void {
     }
 }
 
+fn genMap2(seq: []const u8, n: usize, map: *Map2) !void {
+    map.clearRetainingCapacity();
+    var iter = Iter2.init(seq, n);
+    while (iter.next()) |code| {
+        const gop = try map.getOrPut(global_allocator, code);
+        if (!gop.found_existing) gop.value_ptr.* = 0;
+        gop.value_ptr.* += 1;
+    }
+}
+
+
 const CountCode = struct {
     count: u64,
     code: Code,
@@ -137,6 +201,16 @@ const CountCode = struct {
         return order == .lt or (order == .eq and b.code.data < a.code.data);
     }
 };
+
+const CountCode2 = struct {
+    count: u64,
+    code: Code2,
+    pub fn asc(_: void, a: CountCode2, b: CountCode2) bool {
+        const order = std.math.order(a.count, b.count);
+        return order == .lt or (order == .eq and b.code.data < a.code.data);
+    }
+};
+
 
 fn printMap(self: usize, map: Map) !void {
     var v = std.ArrayList(CountCode).init(global_allocator);
@@ -162,11 +236,41 @@ fn printMap(self: usize, map: Map) !void {
     try stdout.print("\n", .{});
 }
 
+fn printMap2(self: usize, map: Map2) !void {
+    var v = std.ArrayList(CountCode2).init(global_allocator);
+    defer v.deinit();
+    var iter = map.iterator();
+    var total: u64 = 0;
+    while (iter.next()) |it| {
+        const count = it.value_ptr.*;
+        total += count;
+        try v.append(.{ .count = count, .code = it.key_ptr.* });
+    }
+
+    std.sort.sort(CountCode2, v.items, {}, comptime CountCode2.asc);
+    var i = v.items.len - 1;
+    while (true) : (i -= 1) {
+        const cc = v.items[i];
+        try stdout.print("{!s} {d:.0}\n", .{
+            cc.code.toString(self),
+            cc.count,
+        });
+        if (i == 0) break;
+    }
+    try stdout.print("\n", .{});
+}
+
 pub fn main() !void {
     const args = try std.process.argsAlloc(global_allocator);
     const kmer = try std.fmt.parseInt(u8, args[2], 0);
     const input = try readInput();
-    var map: Map = .{};
-    try genMap(input, kmer, &map);
-    try printMap(kmer, map);
+    if (kmer <= 31) {
+        var map: Map = .{};
+        try genMap(input, kmer, &map);
+        try printMap(kmer, map);
+    } else {
+        var map: Map2 = .{};
+        try genMap2(input, kmer, &map);
+        try printMap2(kmer, map);
+    }
 }
