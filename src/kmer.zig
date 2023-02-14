@@ -1,11 +1,23 @@
 // modeled after https://github.com/hanabi1224/Programming-Language-Benchmarks/blob/c7c13cf65bc8c7422d241c3a46bfc16cf7884fc4/bench/algorithm/knucleotide/1.zig
 // will compile with zig version 0.11.0-dev.1615+f62e3b8c0, most likely others
+// $ zig build-exe kmer.zig
+// $ ./kmer in.fasta 4  // 4 for a 4-mer
+// TODO:
+// only UPPERCASE A,C,T,G
 // no tests yet
 // limited to kmer < 64
-// $ zig build-exe kmer.zig
 // does not work on all FASTA files
-// will result in error if k > sequence length
-// $ ./kmer in.fasta 4  // 4 for a 4-mer
+// will result in error if k > shortest sequence length
+// only "works" so far on a single sequence
+// for example:
+// >1
+// AA
+// works, but this:
+// >1
+// AA
+// >2
+// AA
+// does not
 
 const std = @import("std");
 
