@@ -17,7 +17,7 @@
 // AA
 // >2
 // AA
-// does not
+// does not work
 
 const std = @import("std");
 
@@ -204,7 +204,6 @@ fn genMap2(seq: []const u8, n: usize, map: *Map2) !void {
     }
 }
 
-
 const CountCode = struct {
     count: u64,
     code: Code,
@@ -222,7 +221,6 @@ const CountCode2 = struct {
         return order == .lt or (order == .eq and b.code.data < a.code.data);
     }
 };
-
 
 fn printMap(self: usize, map: Map) !void {
     var v = std.ArrayList(CountCode).init(global_allocator);
@@ -276,13 +274,17 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(global_allocator);
     const kmer = try std.fmt.parseInt(u8, args[2], 0);
     const input = try readInput();
-    if (kmer <= 31) {
+    if (kmer == 0) {
+        try stdout.print("K must be > 0  \n", .{});
+    } else if (kmer <= 31) {
         var map: Map = .{};
         try genMap(input, kmer, &map);
         try printMap(kmer, map);
-    } else {
+    } else if (kmer <= 63) {
         var map: Map2 = .{};
         try genMap2(input, kmer, &map);
         try printMap2(kmer, map);
+    } else if (kmer >= 64) {
+        try stdout.print("K must be < 64 \n", .{});
     }
 }
