@@ -1,5 +1,6 @@
 // demonstration of kseq.zig library to parse FASTA/FASTQ
 // release1 - not correct output right now
+// compilation tested with Zig version 0.10.1 
 const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
