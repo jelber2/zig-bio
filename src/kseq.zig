@@ -1,5 +1,6 @@
 // made with gpt-4 to convert kseq.h from C to Zig
 // release1
+// compilation tested with Zig version 0.10.1
 const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
