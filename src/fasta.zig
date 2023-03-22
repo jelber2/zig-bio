@@ -1,17 +1,14 @@
 // demonstration of kseq.zig library to parse FASTA/FASTQ
-// release1 - not correct output right now
-// compilation tested with Zig version 0.10.1 
-const std = @import("std");
-const fs = std.fs;
-const mem = std.mem;
-const io = std.io;
-const os = std.os;
+// release2
+// compilation tested with zig-macos-aarch64-0.11.0-dev.2227+f9b582950
+// zig build-exe fasta2.zig
 
-const KSEQ_INIT = @import("kseq.zig").KSEQ_INIT;
+const std = @import("std");
+const kseq = @import("kseq2.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    var args = try std.process.argsAlloc(allocator);
+    const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
@@ -19,22 +16,26 @@ pub fn main() !void {
         return;
     }
 
-    const file_path = args[1];
-    const file = try fs.cwd().openFile(file_path, .{});
+    const input_file_path = args[1];
+    const file = try std.fs.cwd().openFile(input_file_path, .{});
     defer file.close();
 
-    var kseq = KSEQ_INIT.init(file);
-    var seq = std.ArrayList(u8).init(allocator);
-    defer seq.deinit();
+    const seq = try kseq.kseq_init(allocator, file);
+    defer kseq.kseq_destroy(allocator, seq);
 
-    var num_seqs: usize = 0;
+    var num_sequences: usize = 0;
     var num_bases: usize = 0;
 
-    while (try kseq.kseq_read(&seq)) {
-        num_seqs += 1;
-        num_bases += seq.items.len;
+    while (true) {
+        const read_result = kseq.kseq_read(std.heap.page_allocator, seq, file);
+        if (read_result) |_| {
+            num_sequences += 1;
+            num_bases += seq.seq.l;
+        } else |_| {
+            std.log.err("Error reading sequence", .{});
+            break;
+        }
     }
-
-    std.log.info("Number of sequences: {d}", .{ num_seqs });
-    std.log.info("Number of bases: {d}", .{ num_bases });
+    std.log.info("Number of sequences: {d}", .{num_sequences});
+    std.log.info("Number of bases: {d}", .{num_bases});
 }
