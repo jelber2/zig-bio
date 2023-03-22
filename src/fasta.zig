@@ -1,10 +1,10 @@
 // demonstration of kseq.zig library to parse FASTA/FASTQ
 // release2
 // compilation tested with zig-macos-aarch64-0.11.0-dev.2227+f9b582950
-// zig build-exe fasta2.zig
+// zig build-exe fasta.zig
 
 const std = @import("std");
-const kseq = @import("kseq2.zig");
+const kseq = @import("kseq.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
